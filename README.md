@@ -9,9 +9,12 @@
 *   Синтез речи: gTTS
 
 ## Установка и запуск
-1. Установите зависимости: `pip install -r requirements.txt`
-2. Убедитесь, что запущен Ollama сервер.
-3. Запустите приложение: `python app.py`
+1. Установите Ollama: https://ollama.ai/
+2. Скачайте модель: `ollama pull qwen2.5:0.5b`
+3. Установите зависимости: `pip install -r requirements.txt`
+4. Убедитесь, что запущен Ollama сервер.
+5. Запустите приложение: `python app.py`
+6. Откройте http://localhost:5000
 
 ## Особенности
 ✅ Голосовой ввод и вывод
