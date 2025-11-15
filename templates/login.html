@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход в систему</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {margin: 0; padding: 0; box-sizing: border-box;}
+        body {font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #777d99 0%, #ff9397bc 100%); min-height: 100vh; display: flex; justify-content: center; align-items: flex-start; padding: 15px;}
+        .login-container {background: white; border-radius: 8px; box-shadow: 0 8px 25px rgba(0,0,0,0.15); padding: 25px 20px; width: 100%; max-width: 380px; margin: 10px auto; animation: slideUp 0.4s ease-out;}
+        .login-form h2 {text-align: center; margin-bottom: 20px; color: #1a1a1a; font-size: 22px; font-weight: 600;}
+        .form-group {margin-bottom: 16px;}
+        .form-group label {display: block; margin-bottom: 6px; color: #404040; font-weight: 500; font-size: 13px; text-transform: uppercase;}
+        .form-group input {width: 100%; padding: 10px 12px; border: 1.5px solid #e0e0e0; border-radius: 6px; font-size: 14px; transition: all 0.2s ease; background: #fafafa;}
+        .form-group input:focus {outline: none; border-color: #667eea; background: white; box-shadow: 0 0 0 3px rgba(102,126,234,0.1);}
+        .phone-format {font-size: 11px; color: #666; margin-top: 4px;}
+        .btn-login {width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.3s ease;}
+        .btn-login:hover {transform: translateY(-1px); box-shadow: 0 6px 15px rgba(102,126,234,0.3);}
+        .form-footer {display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 18px; border-top: 1px solid #f0f0f0;}
+        .form-footer a {color: #667eea; text-decoration: none; font-size: 13px; font-weight: 500;}
+        .flash-messages {margin-bottom: 18px;}
+        .flash-message {padding: 10px 12px; border-radius: 6px; margin-bottom: 10px; font-size: 13px; font-weight: 500; text-align: center;}
+        .flash-message.error {background: #fee; color: #c33; border: 1px solid #fcc;}
+        .flash-message.success {background: #efe; color: #363; border: 1px solid #cfc;}
+        @keyframes slideUp {from {opacity: 0; transform: translateY(20px);} to {opacity: 1; transform: translateY(0);}}
+        @media (max-width: 480px) {.login-container {padding: 20px 15px;}}
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-form">
+            <h2>Вход по номеру телефона</h2>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="flash-message {{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+            <form method="POST" action="/login" id="loginForm">
+                <div class="form-group">
+                    <label for="phone">Номер телефона:</label>
+                    <input type="tel" id="phone" name="phone" pattern="[0-9]*" inputmode="numeric" placeholder="79991234567" maxlength="11" required>
+                    <div class="phone-format">Формат: 7XXXXXXXXXX</div>
+                </div>
+                <div class="form-group">
+                    <label for="password">Пароль:</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <button type="submit" class="btn-login">Войти</button>
+            </form>
+            <div class="form-footer">
+                <a href="{{ url_for('register') }}">Регистрация</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('phone').addEventListener('input', function (e) {
+            this.value = this.value.replace(/[^\d]/g, '');
+        });
+        document.getElementById('loginForm').addEventListener('submit', function (e) {
+            const phone = document.getElementById('phone').value;
+            if (phone.length !== 11 || !phone.startsWith('7')) {
+                e.preventDefault();
+                alert('Номер телефона должен содержать 11 цифр и начинаться с 7');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {margin: 0; padding: 0; box-sizing: border-box;}
+        body {font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #777d99 0%, #ff9397bc 100%); min-height: 100vh; display: flex; justify-content: center; align-items: flex-start; padding: 15px;}
+        .register-container {background: white; border-radius: 8px; box-shadow: 0 8px 25px rgba(0,0,0,0.15); padding: 25px 20px; width: 100%; max-width: 380px; margin: 10px auto; animation: slideUp 0.4s ease-out;}
+        .register-form h2 {text-align: center; margin-bottom: 20px; color: #1a1a1a; font-size: 22px; font-weight: 600;}
+        .form-group {margin-bottom: 16px;}
+        .form-group label {display: block; margin-bottom: 6px; color: #404040; font-weight: 500; font-size: 13px; text-transform: uppercase;}
+        .form-group input {width: 100%; padding: 10px 12px; border: 1.5px solid #e0e0e0; border-radius: 6px; font-size: 14px; transition: all 0.2s ease; background: #fafafa;}
+        .form-group input:focus {outline: none; border-color: #667eea; background: white; box-shadow: 0 0 0 3px rgba(102,126,234,0.1);}
+        .input-hint {font-size: 11px; color: #666; margin-top: 4px;}
+        .checkbox-group {display: flex; align-items: flex-start; gap: 8px; margin-bottom: 18px;}
+        .checkbox-group input[type="checkbox"] {width: 16px; height: 16px; margin-top: 2px; accent-color: #667eea;}
+        .checkbox-label {font-size: 13px; color: #555;}
+        .checkbox-label a {color: #667eea; text-decoration: none;}
+        .btn-register {width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.3s ease;}
+        .btn-register:hover {transform: translateY(-1px); box-shadow: 0 6px 15px rgba(102,126,234,0.3);}
+        .form-footer {display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 18px; border-top: 1px solid #f0f0f0;}
+        .form-footer span {color: #666; font-size: 13px;}
+        .form-footer a {color: #667eea; text-decoration: none; font-size: 13px; font-weight: 500;}
+        .flash-messages {margin-bottom: 18px;}
+        .flash-message {padding: 10px 12px; border-radius: 6px; margin-bottom: 10px; font-size: 13px; font-weight: 500; text-align: center;}
+        .flash-message.error {background: #fee; color: #c33; border: 1px solid #fcc;}
+        .flash-message.success {background: #efe; color: #363; border: 1px solid #cfc;}
+        .flash-message.info {background: #e3f2fd; color: #1565c0; border: 1px solid #bbdefb;}
+        @keyframes slideUp {from {opacity: 0; transform: translateY(20px);} to {opacity: 1; transform: translateY(0);}}
+        @media (max-width: 480px) {.register-container {padding: 20px 15px;}}
+    </style>
+</head>
+<body>
+    <div class="register-container">
+        <div class="register-form">
+            <h2>Регистрация</h2>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="flash-message {{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+            <form method="POST" action="/register" id="registerForm">
+                <div class="form-group">
+                    <label for="name">Имя:</label>
+                    <input type="text" id="name" name="name" placeholder="Введите ваше имя" required minlength="2" maxlength="50">
+                    <div class="input-hint">Как к вам обращаться</div>
+                </div>
+                <div class="form-group">
+                    <label for="phone">Номер телефона:</label>
+                    <input type="tel" id="phone" name="phone" placeholder="79991234567" maxlength="11" required>
+                    <div class="input-hint">Формат: 7XXXXXXXXXX</div>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email (опционально):</label>
+                    <input type="email" id="email" name="email" placeholder="example@mail.ru">
+                </div>
+                <div class="form-group">
+                    <label for="password">Пароль:</label>
+                    <input type="password" id="password" name="password" required minlength="6">
+                    <div class="input-hint">Минимум 6 символов</div>
+                </div>
+                <div class="form-group">
+                    <label for="confirm_password">Подтвердите пароль:</label>
+                    <input type="password" id="confirm_password" name="confirm_password" required>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="agree_terms" name="agree_terms" required>
+                    <label for="agree_terms" class="checkbox-label">Я согласен с <a href="#">условиями использования</a></label>
+                </div>
+                <button type="submit" class="btn-register">Регистрация</button>
+            </form>
+            <div class="form-footer">
+                <span>Уже есть аккаунт?</span>
+                <a href="{{ url_for('login') }}">Войти</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', function(e) {
+            const name = document.getElementById('name').value;
+            const phone = document.getElementById('phone').value;
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm_password').value;
+            const agreeTerms = document.getElementById('agree_terms').checked;
+
+            if (name.length < 2) {
+                e.preventDefault();
+                alert('Имя должно содержать минимум 2 символа');
+                return;
+            }
+            if (phone.length !== 11 || !phone.startsWith('7')) {
+                e.preventDefault();
+                alert('Номер телефона должен содержать 11 цифр и начинаться с 7');
+                return;
+            }
+            if (password.length < 6) {
+                e.preventDefault();
+                alert('Пароль должен содержать минимум 6 символов');
+                return;
+            }
+            if (password !== confirmPassword) {
+                e.preventDefault();
+                alert('Пароли не совпадают');
+                return;
+            }
+            if (!agreeTerms) {
+                e.preventDefault();
+                alert('Необходимо согласие с условиями использования');
+                return;
+            }
+        });
+
+        document.getElementById('phone').addEventListener('input', function(e) {
+            this.value = this.value.replace(/[^\d]/g, '');
+        });
+    </script>
+</body>
+</html>

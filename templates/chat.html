@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Чат с AI Сонником</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {margin: 0; padding: 0; box-sizing: border-box;}
+        body {font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #777d99 0%, #ff9397bc 100%); min-height: 100vh; padding: 20px;}
+        .chat-container {max-width: 800px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 8px 25px rgba(0,0,0,0.15); overflow: hidden; height: 90vh; display: flex; flex-direction: column;}
+        .chat-header {background: linear-gradient(135deg, #777d99 0%, #ff9397bc 100%); color: white; padding: 20px; text-align: center;}
+        .chat-header h1 {margin: 0; font-size: 24px; font-weight: 600;}
+        .user-info {margin-top: 10px; font-size: 14px; opacity: 0.9;}
+        .user-info a {color: white; margin-left: 15px; text-decoration: underline;}
+        .chat-messages {flex: 1; padding: 20px; overflow-y: auto; background: #f8f9fa;}
+        .message {margin-bottom: 20px; padding: 15px; border-radius: 12px; max-width: 80%; position: relative; animation: fadeIn 0.3s ease-out;}
+        .user-message {background: #667eea; color: white; margin-left: auto; border-bottom-right-radius: 4px;}
+        .bot-message {background: white; color: #333; border: 1px solid #e0e0e0; border-bottom-left-radius: 4px;}
+        .message-content {line-height: 1.5;}
+        .message-time {font-size: 11px; opacity: 0.7; margin-top: 5px; text-align: right;}
+        .chat-input-container {padding: 20px; border-top: 1px solid #e0e0e0; background: white;}
+        .chat-input-form {display: flex; gap: 10px; align-items: flex-end;}
+        .message-input {flex: 1; padding: 12px 15px; border: 1.5px solid #e0e0e0; border-radius: 8px; font-size: 14px; font-family: inherit; resize: none; height: 60px;}
+        .message-input:focus {outline: none; border-color: #667eea;}
+        .send-button {padding: 12px 25px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s ease;}
+        .send-button:hover {transform: translateY(-1px); box-shadow: 0 6px 15px rgba(102,126,234,0.3);}
+        .send-button:disabled {opacity: 0.6; cursor: not-allowed; transform: none;}
+        .voice-controls {display: flex; gap: 10px; margin-top: 10px; align-items: center;}
+        .voice-button {padding: 10px 15px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.3s ease;}
+        .voice-button.recording {background: #dc3545; animation: pulse 1.5s infinite;}
+        .voice-button:hover {transform: translateY(-1px);}
+        .voice-button:disabled {opacity: 0.6; cursor: not-allowed; transform: none;}
+        .tts-button {background: none; border: none; color: #667eea; cursor: pointer; font-size: 12px; margin-left: 10px; opacity: 0.7; transition: opacity 0.3s ease;}
+        .tts-button.playing {color: #dc3545; opacity: 1;}
+        .tts-button:hover {opacity: 1;}
+        .tts-button:disabled {opacity: 0.4; cursor: not-allowed;}
+        .chat-actions {display: flex; justify-content: space-between; margin-top: 15px;}
+        .action-button {background: none; border: 1px solid #e0e0e0; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px; color: #666; transition: all 0.3s ease;}
+        .action-button:hover {background: #f8f9fa; border-color: #667eea; color: #667eea;}
+        .empty-chat {text-align: center; color: #666; padding: 40px 20px;}
+        .recording-status {display: none; color: #666; font-size: 13px; align-items: center; gap: 8px;}
+        .recording-dot {width: 8px; height: 8px; background: #dc3545; border-radius: 50%; animation: pulse 1.5s infinite;}
+        .processing-status {display: none; color: #666; font-size: 13px; align-items: center; gap: 8px;}
+        @keyframes fadeIn {from {opacity: 0; transform: translateY(10px);} to {opacity: 1; transform: translateY(0);}}
+        @keyframes pulse {0% {transform: scale(1); opacity: 1;} 50% {transform: scale(1.2); opacity: 0.7;} 100% {transform: scale(1); opacity: 1;}}
+        @media (max-width: 768px) {.chat-container {height: 100vh; border-radius: 0;} .message {max-width: 90%;}}
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1>AI Сонник</h1>
+            <div class="user-info">
+                {% if user %}Добро пожаловать, {{ user.name or user.phone }}! <a href="{{ url_for('logout') }}">Выйти</a>{% endif %}
+            </div>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="message {% if message.is_user %}user-message{% else %}bot-message{% endif %}">
+                        <div class="message-content">
+                            {{ message.content }}
+                            {% if not message.is_user %}
+                                <button class="tts-button" data-text="{{ message.content | replace('"', '&quot;') }}">🔊 Озвучить</button>
+                            {% endif %}
+                        </div>
+                        <div class="message-time">{{ message.timestamp.strftime('%H:%M') }}</div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-chat">
+                    <h3>Расскажите о своём сне</h3>
+                    <p>Опишите, что вам приснилось, и AI-сонник поможет вам понять скрытый смысл через призму психологии.</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="chat-input-container">
+            <form class="chat-input-form" id="chatForm">
+                <textarea class="message-input" id="messageInput" placeholder="Опишите свой сон или используйте голосовой ввод..." required></textarea>
+                <button type="submit" class="send-button" id="sendButton">Отправить</button>
+            </form>
+
+            <div class="voice-controls">
+                <button type="button" class="voice-button" id="voiceButton">
+                    🎤 Голосовой ввод
+                </button>
+                <div class="recording-status" id="recordingStatus">
+                    <div class="recording-dot"></div>
+                    <span>Идет запись... Говорите сейчас</span>
+                </div>
+                <div class="processing-status" id="processingStatus">
+                    <div class="recording-dot"></div>
+                    <span>Обработка аудио...</span>
+                </div>
+            </div>
+
+            <div class="chat-actions">
+                <button type="button" class="action-button" onclick="clearChat()">Очистить чат</button>
+                <button type="button" class="action-button" onclick="showDreamTips()">Советы по описанию</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
+        let currentAudio = null;
+        let currentTTSButton = null;
+
+        function scrollToBottom() {
+            const chatMessages = document.getElementById('chatMessages');
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function showDreamTips() {
+            alert("Советы по описанию сна:\n\n1. Опишите основные события и персонажи сна\n2. Укажите свои эмоции во сне\n3. Отметьте яркие цвета, звуки или ощущения\n4. Опишите концовку сна и ваше пробуждение\n5. Упомяните повторяющиеся элементы, если они есть");
+        }
+
+        async function clearChat() {
+            if (confirm('Вы уверены, что хотите очистить историю чата? Это действие нельзя отменить.')) {
+                try {
+                    const response = await fetch('/api/clear_chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.success) {
+                            // Очищаем интерфейс
+                            document.getElementById('chatMessages').innerHTML = '<div class="empty-chat"><h3>Расскажите о своём сне</h3><p>Опишите, что вам приснилось, и AI-сонник поможет вам понять скрытый смысл через призму психологии.</p></div>';
+                            // Останавливаем все аудио
+                            stopAllAudio();
+                            // Показываем сообщение об успехе
+                            alert('История чата успешно очищена');
+                        } else {
+                            alert('Ошибка при очистке чата');
+                        }
+                    } else {
+                        alert('Ошибка при очистке чата');
+                    }
+                } catch (error) {
+                    console.error('Ошибка:', error);
+                    alert('Ошибка при очистке чата');
+                }
+            }
+        }
+
+        function resetVoiceUI() {
+            const voiceButton = document.getElementById('voiceButton');
+            const recordingStatus = document.getElementById('recordingStatus');
+            const processingStatus = document.getElementById('processingStatus');
+
+            isRecording = false;
+            voiceButton.disabled = false;
+            voiceButton.textContent = '🎤 Голосовой ввод';
+            voiceButton.classList.remove('recording');
+            recordingStatus.style.display = 'none';
+            processingStatus.style.display = 'none';
+        }
+
+        function stopAllAudio() {
+            // Останавливаем серверное аудио
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+            }
+
+            // Останавливаем браузерное озвучивание
+            if (typeof speechSynthesis !== 'undefined') {
+                speechSynthesis.cancel();
+            }
+
+            // Сбрасываем состояние кнопок
+            if (currentTTSButton) {
+                currentTTSButton.classList.remove('playing');
+                currentTTSButton.textContent = '🔊 Озвучить';
+                currentTTSButton.disabled = false;
+                currentTTSButton = null;
+            }
+
+            // Сбрасываем все кнопки озвучивания
+            document.querySelectorAll('.tts-button').forEach(button => {
+                button.classList.remove('playing');
+                button.textContent = '🔊 Озвучить';
+                button.disabled = false;
+            });
+        }
+
+        async function speakText(buttonElement) {
+            const text = buttonElement.getAttribute('data-text');
+
+            // Если уже воспроизводится аудио и нажата та же кнопка - останавливаем
+            if (currentTTSButton === buttonElement && (currentAudio || speechSynthesis.speaking)) {
+                stopAllAudio();
+                return;
+            }
+
+            // Останавливаем предыдущее воспроизведение
+            stopAllAudio();
+
+            // Устанавливаем текущую кнопку
+            currentTTSButton = buttonElement;
+            buttonElement.classList.add('playing');
+            buttonElement.textContent = '⏹️ Стоп';
+
+            const cleanText = text.replace(/[^\w\sа-яА-Я.,!?;:()-]/gu, '').substring(0, 1000);
+
+            if (!cleanText.trim()) {
+                alert('Текст для озвучивания пуст');
+                stopAllAudio();
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/text-to-speech', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ text: cleanText })
+                });
+
+                if (response.ok) {
+                    const audioBlob = await response.blob();
+
+                    if (audioBlob.size > 0) {
+                        const audioUrl = URL.createObjectURL(audioBlob);
+                        currentAudio = new Audio(audioUrl);
+
+                        currentAudio.onended = function() {
+                            stopAllAudio();
+                            URL.revokeObjectURL(audioUrl);
+                        };
+
+                        currentAudio.onerror = function() {
+                            stopAllAudio();
+                            URL.revokeObjectURL(audioUrl);
+                            // Fallback к браузерному TTS
+                            useBrowserTTS(cleanText, buttonElement);
+                        };
+
+                        await currentAudio.play();
+                        return;
+                    }
+                }
+
+                // Fallback к браузерному TTS
+                useBrowserTTS(cleanText, buttonElement);
+
+            } catch (error) {
+                console.error('TTS error:', error);
+                useBrowserTTS(cleanText, buttonElement);
+            }
+        }
+
+        function useBrowserTTS(text, buttonElement) {
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'ru-RU';
+                utterance.rate = 0.9;
+                utterance.pitch = 1;
+
+                utterance.onend = function() {
+                    stopAllAudio();
+                };
+
+                utterance.onerror = function() {
+                    stopAllAudio();
+                    alert('Озвучивание не поддерживается в вашем браузере');
+                };
+
+                speechSynthesis.speak(utterance);
+            } else {
+                stopAllAudio();
+                alert('Озвучивание не доступно в вашем браузере');
+            }
+        }
+
+        async function toggleRecording() {
+            const voiceButton = document.getElementById('voiceButton');
+            const recordingStatus = document.getElementById('recordingStatus');
+            const processingStatus = document.getElementById('processingStatus');
+
+            if (!isRecording) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        audio: {
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            sampleRate: 16000,
+                            channelCount: 1
+                        }
+                    });
+
+                    mediaRecorder = new MediaRecorder(stream, {
+                        mimeType: 'audio/webm;codecs=opus'
+                    });
+                    audioChunks = [];
+
+                    mediaRecorder.ondataavailable = (event) => {
+                        if (event.data.size > 0) {
+                            audioChunks.push(event.data);
+                        }
+                    };
+
+                    mediaRecorder.onstop = async () => {
+                        recordingStatus.style.display = 'none';
+                        processingStatus.style.display = 'flex';
+
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+
+                        if (audioBlob.size < 1000) {
+                            alert('Запись слишком короткая. Попробуйте говорить дольше.');
+                            resetVoiceUI();
+                            stream.getTracks().forEach(track => track.stop());
+                            return;
+                        }
+
+                        const formData = new FormData();
+                        formData.append('audio', audioBlob, 'recording.webm');
+
+                        try {
+                            const response = await fetch('/api/speech-to-text', {
+                                method: 'POST',
+                                body: formData
+                            });
+
+                            const data = await response.json();
+
+                            if (response.ok && data.text && data.text !== "Не удалось распознать речь") {
+                                document.getElementById('messageInput').value = data.text;
+                                document.getElementById('messageInput').style.height = 'auto';
+                                document.getElementById('messageInput').style.height = document.getElementById('messageInput').scrollHeight + 'px';
+                            } else {
+                                alert(data.error || 'Не удалось распознать речь. Попробуйте еще раз.');
+                            }
+                        } catch (error) {
+                            console.error('Ошибка распознавания:', error);
+                            alert('Ошибка при распознавании речи. Проверьте подключение к интернету.');
+                        } finally {
+                            resetVoiceUI();
+                            stream.getTracks().forEach(track => track.stop());
+                        }
+                    };
+
+                    mediaRecorder.start();
+                    isRecording = true;
+                    voiceButton.textContent = '⏹️ Остановить запись';
+                    voiceButton.classList.add('recording');
+                    recordingStatus.style.display = 'flex';
+
+                    // Авто-остановка через 30 секунд
+                    setTimeout(() => {
+                        if (isRecording) {
+                            mediaRecorder.stop();
+                        }
+                    }, 30000);
+
+                } catch (error) {
+                    console.error('Ошибка доступа к микрофону:', error);
+                    if (error.name === 'NotAllowedError') {
+                        alert('Доступ к микрофону запрещен. Разрешите доступ в настройках браузера.');
+                    } else {
+                        alert('Не удалось получить доступ к микрофону. Проверьте подключение микрофона.');
+                    }
+                    resetVoiceUI();
+                }
+            } else {
+                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                    mediaRecorder.stop();
+                }
+            }
+        }
+
+        // Назначаем обработчик на кнопку голосового ввода
+        document.getElementById('voiceButton').addEventListener('click', toggleRecording);
+
+        // Обработчик для кнопок озвучивания (делегирование событий)
+        document.getElementById('chatMessages').addEventListener('click', function(e) {
+            if (e.target.classList.contains('tts-button')) {
+                speakText(e.target);
+            }
+        });
+
+        document.getElementById('chatForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const messageInput = document.getElementById('messageInput');
+            const sendButton = document.getElementById('sendButton');
+            const message = messageInput.value.trim();
+
+            if (!message) return;
+
+            addMessageToChat(message, true);
+            messageInput.value = '';
+            messageInput.style.height = '60px';
+            sendButton.disabled = true;
+            sendButton.textContent = 'Отправка...';
+
+            try {
+                const formData = new FormData();
+                formData.append('message', message);
+
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error('Ошибка сервера');
+                const data = await response.json();
+
+                if (data.response) {
+                    addMessageToChat(data.response, false);
+                } else {
+                    throw new Error('Пустой ответ от сервера');
+                }
+
+            } catch (error) {
+                console.error('Ошибка:', error);
+                addMessageToChat('Извините, произошла ошибка. Пожалуйста, попробуйте позже.', false);
+            } finally {
+                sendButton.disabled = false;
+                sendButton.textContent = 'Отправить';
+            }
+        });
+
+        function addMessageToChat(content, isUser) {
+            const chatMessages = document.getElementById('chatMessages');
+
+            const emptyChat = chatMessages.querySelector('.empty-chat');
+            if (emptyChat) {
+                emptyChat.remove();
+            }
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
+
+            const now = new Date();
+            const timeString = now.getHours().toString().padStart(2, '0') + ':' +
+                             now.getMinutes().toString().padStart(2, '0');
+
+            // Безопасное экранирование текста для data-атрибута
+            const safeText = content.replace(/"/g, '&quot;');
+
+            let messageContent = `<div class="message-content">${content}`;
+            if (!isUser) {
+                messageContent += ` <button class="tts-button" data-text="${safeText}">🔊 Озвучить</button>`;
+            }
+            messageContent += `</div>`;
+
+            messageDiv.innerHTML = messageContent + `<div class="message-time">${timeString}</div>`;
+
+            chatMessages.appendChild(messageDiv);
+            scrollToBottom();
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('messageInput').focus();
+            scrollToBottom();
+        });
+
+        document.getElementById('messageInput').addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+
+        document.getElementById('messageInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                document.getElementById('chatForm').dispatchEvent(new Event('submit'));
+            }
+        });
+    </script>
+</body>
+</html>
